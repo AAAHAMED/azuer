@@ -1,7 +1,3 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
-# More GitHub Actions for Azure: https://github.com/Azure/actions
-# More info on Python, GitHub Actions, and Azure App Service: https://aka.ms/python-webapps-actions
-
 name: Build and deploy Python app to Azure Web App - flask-backend-app
 
 on:
@@ -15,64 +11,61 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Step 1: Checkout repository
       - uses: actions/checkout@v4
 
+      # Step 2: Set up Python version
       - name: Set up Python version
         uses: actions/setup-python@v5
         with:
           python-version: '3.9'
 
+      # Step 3: Create and activate a virtual environment
       - name: Create and start virtual environment
         run: |
           python -m venv venv
           source venv/bin/activate
       
+      # Step 4: Install dependencies
       - name: Install dependencies
         run: pip install -r requirements.txt
-        
-      # Optional: Add step to run tests here (PyTest, Django test suites, etc.)
 
-      - name: Zip artifact for deployment
-        run: zip release.zip ./* -r
+      # Step 5: Archive application files for deployment
+      - name: Archive app files
+        run: |
+          zip -r release.zip app.py requirements.txt static templates
 
+      # Step 6: Upload the artifact
       - name: Upload artifact for deployment jobs
         uses: actions/upload-artifact@v4
         with:
           name: python-app
-          path: |
-            release.zip
-            !venv/
+          path: release.zip
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
-    environment:
-      name: 'Production'
-      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
-    permissions:
-      id-token: write #This is required for requesting the JWT
 
     steps:
+      # Step 1: Download artifact
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
           name: python-app
 
-      - name: Unzip artifact for deployment
+      # Step 2: Unzip artifact
+      - name: Unzip artifact
         run: unzip release.zip
 
-      
-      - name: Login to Azure
+      # Step 3: Login to Azure using Publish Profile
+      - name: Azure Login
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_A12F31F1377C43D6A3B8631B2F6F8B2C }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_F7FA1173679B4B5FB71FA5A7E48D7FA2 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_0E5AC82D7D5045B9818ADF651504A204 }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
 
-      - name: 'Deploy to Azure Web App'
+      # Step 4: Deploy to Azure Web App
+      - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
-        id: deploy-to-webapp
         with:
           app-name: 'flask-backend-app'
-          slot-name: 'Production'
-          
+          slot-name: 'Production' # Omit if not using deployment slots
